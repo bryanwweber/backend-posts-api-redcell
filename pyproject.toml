@@ -1,0 +1,33 @@
+[project]
+name = "backend-posts-api-redcell"
+version = "2024.1"
+description = "Posts API for Red Cell take home"
+authors = [
+    {name = "Bryan Weber", email = "bryan.w.weber@gmail.com"},
+]
+dependencies = [
+    "fastapi>=0.111.0",
+    "pydantic>=2.8.0",
+    "pydantic-settings>=2.3.4",
+]
+requires-python = ">=3.12"
+readme = "README.md"
+license = {text = "MIT"}
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+
+[tool.pdm]
+distribution = true
+
+[tool.pdm.dev-dependencies]
+test = [
+    "pytest>=8.2.2",
+    "pytest-cov>=5.0.0",
+    "httpx>=0.27.0",
+]
+dev = [
+    "ruff>=0.5.0",
+]
