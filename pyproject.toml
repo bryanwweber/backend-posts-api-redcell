@@ -9,6 +9,11 @@ dependencies = [
     "fastapi>=0.111.0",
     "pydantic>=2.8.0",
     "pydantic-settings>=2.3.4",
+    "sqlalchemy[asyncio]>2",
+    "sqlmodel>=0.0.19",
+    "asyncpg>=0.29.0",
+    "loguru>=0.7.2",
+    "faker>=26.0.0",
 ]
 requires-python = ">=3.12"
 readme = "README.md"
@@ -30,4 +35,19 @@ test = [
 ]
 dev = [
     "ruff>=0.5.0",
+]
+
+[tool.ruff]
+extend-select = [
+    "F",
+    "E",
+    "W",
+    "I",
+    "D101",
+    "D103",
+    "UP",
+    "RUF",
+    "ASYNC",
+    "PERF",
+    "FURB",
 ]
