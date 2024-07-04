@@ -44,6 +44,12 @@ async def _create_data(engine: AsyncEngine):
 async def init_db(
     create_data: bool = False,
 ) -> None:
+    """Initialize the database and optionally fill it with sample data.
+
+    :params:
+    create_data: bool, optional
+    If True, create sample data in the database.
+    """
     global engine
     logger.info("Creating database connection with {}", DATABASE_URL)
     engine = create_async_engine(DATABASE_URL, echo=True, future=True)
@@ -59,6 +65,7 @@ async def init_db(
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None, None]:
+    """Yield a session object to work with the database."""
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with async_session() as session:
         yield session

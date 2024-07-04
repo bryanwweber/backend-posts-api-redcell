@@ -10,12 +10,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from .database import get_session, init_db
 from .models import (
     Post,
-    PostCreate,
-    PostPublic,
     PostUpdate,
     User,
-    UserCreate,
-    UserPublic,
     UserUpdate,
 )
 
@@ -36,7 +32,13 @@ tags_metadata = [
         "description": "Create, view, update, and delete posts.",
     },
 ]
-app = FastAPI(lifespan=_lifespan, openapi_tags=tags_metadata)
+
+app = FastAPI(
+    lifespan=_lifespan,
+    openapi_tags=tags_metadata,
+    title="Backend Posts API",
+    version="2024.1",
+)
 
 
 def _could_not_find_post_exception(id: int):
@@ -49,6 +51,7 @@ def _could_not_find_user_exception(id: int):
 
 @app.get("/", response_class=HTMLResponse)
 async def hello_world():
+    """Return the rendered README file, if present."""
     pth = Path("/app/README.md")
     if not pth.exists():
         return HTMLResponse("")
@@ -56,9 +59,14 @@ async def hello_world():
 
 
 @app.get("/users/", tags=["User Operations"])
-async def get_users(
-    *, session: AsyncSession = Depends(get_session)
-) -> list[UserPublic]:
+async def get_users(*, session: AsyncSession = Depends(get_session)) -> list[User]:
+    """
+    Retrieve all users from the database.
+
+    **Returns:**
+
+    A list of `User` objects representing all users in the database.
+    """
     result = await session.exec(select(User))
     return result.all()
 
@@ -70,9 +78,19 @@ async def get_users(
         404: {"description": "The item was not found"},
     },
 )
-async def get_user(
-    id: int, *, session: AsyncSession = Depends(get_session)
-) -> UserPublic:
+async def get_user(id: int, *, session: AsyncSession = Depends(get_session)) -> User:
+    """
+    Retrieve a user by its ID from the database.
+
+    **Path Items:**
+
+    * `id`: The integer ID of the user to retrieve.
+
+    **Returns:**
+
+    A `User` object representing the retrieved user, or raises a 404 error if the user
+    is not found.
+    """
     result = await session.get(User, id)
     if result is None:
         raise _could_not_find_user_exception(id)
@@ -88,7 +106,24 @@ async def get_user(
 )
 async def update_user(
     id: int, *, session: AsyncSession = Depends(get_session), user: UserUpdate
-) -> UserPublic:
+) -> User:
+    """
+    Update a user by its ID in the database.
+
+    **Path Items:**
+
+    * `id`: The integer ID of the user to update.
+
+    **Request Body:**
+
+    * `name`: Optional, will be updated if provided as a string
+    * `email`: Optional, will be updated if provided as a string.
+
+    **Returns:**
+
+    A `User` object representing the updated user, or raises a 404 error if the user is
+    not found.
+    """
     user_result = await session.get(User, id)
     if user_result is None:
         raise _could_not_find_user_exception(id)
@@ -111,6 +146,17 @@ async def update_user(
     },
 )
 async def delete_user(id: int, *, session: AsyncSession = Depends(get_session)) -> None:
+    """
+    Delete a user by its ID in the database.
+
+    **Path Items:**
+
+    * `id`: The integer ID of the user to delete
+
+    **Returns**:
+
+    Nothing, or raises a 404 error if the user is not found.
+    """
     user = await session.get(User, id)
     if user is None:
         raise _could_not_find_user_exception(id)
@@ -120,8 +166,21 @@ async def delete_user(id: int, *, session: AsyncSession = Depends(get_session)) 
 
 @app.post("/users/", tags=["User Operations"])
 async def create_user(
-    *, session: AsyncSession = Depends(get_session), user: UserCreate
-) -> UserPublic:
+    *, session: AsyncSession = Depends(get_session), user: User
+) -> User:
+    """
+    Create a user in the database.
+
+    **Request Body:**
+
+    * `name`: A string for the user's full name.
+    * `email`: A string for the user's email. The email address is not verified to be a
+      valid email address
+
+    **Returns:**
+
+    The created `User` object.
+    """
     db_user = User.model_validate(user)
     session.add(db_user)
     await session.commit()
@@ -130,9 +189,14 @@ async def create_user(
 
 
 @app.get("/posts/", tags=["Post Operations"])
-async def get_posts(
-    *, session: AsyncSession = Depends(get_session)
-) -> list[PostPublic]:
+async def get_posts(*, session: AsyncSession = Depends(get_session)) -> list[Post]:
+    """
+    Retrieve all posts from the database.
+
+    **Returns:**
+
+    A list of `Post` objects representing all posts in the database.
+    """
     result = await session.exec(select(Post))
     return result.all()
 
@@ -145,8 +209,22 @@ async def get_posts(
     },
 )
 async def create_post(
-    *, session: AsyncSession = Depends(get_session), post: PostCreate
-) -> PostPublic:
+    *, session: AsyncSession = Depends(get_session), post: Post
+) -> Post:
+    """
+    Create a post in the database.
+
+    **Request Body:**
+
+    * `title`: A string for the title of the post.
+    * `content`: A string for the content to be posted.
+    * `user_id`: An integer of an existing user in the database.
+
+    **Returns:**
+
+    The created `Post` object, or raises a 404 error if the `user_id` is not found in
+    the database.
+    """
     user = await session.get(User, post.user_id)
     if user is None:
         raise _could_not_find_user_exception(post.user_id)
@@ -164,9 +242,19 @@ async def create_post(
         404: {"description": "The item was not found"},
     },
 )
-async def get_post(
-    id: int, *, session: AsyncSession = Depends(get_session)
-) -> PostPublic:
+async def get_post(id: int, *, session: AsyncSession = Depends(get_session)) -> Post:
+    """
+    Retrieve a post by its ID from the database.
+
+    **Path Items:**
+
+    * `id`: The integer ID of the post to retrieve.
+
+    **Returns:**
+
+    A `Public` object representing the retrieved user, or raises a 404 error if the post
+    is not found.
+    """
     result = await session.get(Post, id)
     if result is None:
         raise _could_not_find_post_exception(id)
@@ -182,7 +270,25 @@ async def get_post(
 )
 async def update_post(
     id: int, *, session: AsyncSession = Depends(get_session), post: PostUpdate
-) -> PostPublic:
+) -> Post:
+    """
+    Update a post by its ID in the database. Note, it is not possible to change the
+    `user_id` associated with a post.
+
+    **Path Items:**
+
+    * `id`: The integer ID of the post to update.
+
+    **Request Body:**
+
+    * `title`: Optional, will be updated if provided as a string
+    * `content`: Optional, will be updated if provided as a string.
+
+    **Returns:**
+
+    A `Post` object representing the updated user, or raises a 404 error if the post is
+    not found.
+    """
     post_result = await session.get(Post, id)
     if post_result is None:
         raise _could_not_find_post_exception(id)
@@ -205,6 +311,17 @@ async def update_post(
     },
 )
 async def delete_post(id: int, *, session: AsyncSession = Depends(get_session)) -> None:
+    """
+    Delete a post by its ID in the database.
+
+    **Path Items:**
+
+    * `id`: The integer ID of the post to delete
+
+    **Returns**:
+
+    Nothing, or raises a 404 error if the post is not found.
+    """
     post = await session.get(Post, id)
     if post is None:
         raise _could_not_find_post_exception(id)

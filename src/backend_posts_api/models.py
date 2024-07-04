@@ -1,18 +1,11 @@
 from sqlmodel import Field, Relationship, SQLModel
 
 
-class UserBase(SQLModel):
+class User(SQLModel, table=True):
+    id: int | None = Field(default=None, nullable=False, primary_key=True)
     name: str
     email: str
-
-
-class User(UserBase, table=True):
-    id: int | None = Field(default=None, nullable=False, primary_key=True)
     posts: list["Post"] = Relationship(back_populates="user")
-
-
-class UserCreate(UserBase):
-    pass
 
 
 class UserUpdate(SQLModel):
@@ -20,27 +13,12 @@ class UserUpdate(SQLModel):
     email: str | None = Field(default=None)
 
 
-class UserPublic(UserBase):
-    id: int
-
-
-class PostBase(SQLModel):
+class Post(SQLModel, table=True):
+    id: int | None = Field(default=None, nullable=False, primary_key=True)
     title: str
     content: str
     user_id: int = Field(foreign_key="user.id")
-
-
-class Post(PostBase, table=True):
-    id: int | None = Field(default=None, nullable=False, primary_key=True)
     user: User = Relationship(back_populates="posts")
-
-
-class PostCreate(PostBase):
-    pass
-
-
-class PostPublic(PostBase):
-    id: int
 
 
 class PostUpdate(SQLModel):

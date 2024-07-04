@@ -48,7 +48,6 @@ extend-select = [
     "E",
     "W",
     "I",
-    "D101",
     "D103",
     "UP",
     "RUF",
