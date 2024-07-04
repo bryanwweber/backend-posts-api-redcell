@@ -61,7 +61,7 @@ tags_metadata = [
 ]
 
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+async def _verify_jwt(token: Annotated[str, Depends(oauth2_scheme)]) -> None:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -188,7 +188,7 @@ async def get_user(id: int, *, session: AsyncSession = Depends(get_session)) -> 
     responses={
         404: {"description": "The item was not found"},
     },
-    dependencies=[Depends(get_current_user)],
+    dependencies=[Depends(_verify_jwt)],
 )
 async def update_user(
     id: int, *, session: AsyncSession = Depends(get_session), user: UserUpdate
@@ -230,7 +230,7 @@ async def update_user(
     responses={
         404: {"description": "The item was not found"},
     },
-    dependencies=[Depends(get_current_user)],
+    dependencies=[Depends(_verify_jwt)],
 )
 async def delete_user(id: int, *, session: AsyncSession = Depends(get_session)) -> None:
     """
@@ -251,7 +251,7 @@ async def delete_user(id: int, *, session: AsyncSession = Depends(get_session)) 
     session.commit()
 
 
-@app.post("/users/", tags=["User Operations"], dependencies=[Depends(get_current_user)])
+@app.post("/users/", tags=["User Operations"], dependencies=[Depends(_verify_jwt)])
 async def create_user(
     *, session: AsyncSession = Depends(get_session), user: User
 ) -> User:
@@ -300,7 +300,7 @@ async def get_posts(*, session: AsyncSession = Depends(get_session)) -> list[Pos
     responses={
         404: {"description": "The item was not found"},
     },
-    dependencies=[Depends(get_current_user)],
+    dependencies=[Depends(_verify_jwt)],
 )
 async def create_post(
     *, session: AsyncSession = Depends(get_session), post: Post
@@ -367,7 +367,7 @@ async def get_post(id: int, *, session: AsyncSession = Depends(get_session)) -> 
     responses={
         404: {"description": "The item was not found"},
     },
-    dependencies=[Depends(get_current_user)],
+    dependencies=[Depends(_verify_jwt)],
 )
 async def update_post(
     id: int, *, session: AsyncSession = Depends(get_session), post: PostUpdate
@@ -410,7 +410,7 @@ async def update_post(
     responses={
         404: {"description": "The item was not found"},
     },
-    dependencies=[Depends(get_current_user)],
+    dependencies=[Depends(_verify_jwt)],
 )
 async def delete_post(id: int, *, session: AsyncSession = Depends(get_session)) -> None:
     """
