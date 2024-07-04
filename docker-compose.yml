@@ -17,7 +17,10 @@ services:
       - "5432:5432"
   backend:
     container_name: backend
-    build: .
+    image: backend-posts-api:latest
+    build:
+      context: .
+      target: runner
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -28,6 +31,10 @@ services:
         condition: service_healthy
     ports:
       - "8000:8000"
+    volumes:
+      - type: bind
+        source: .
+        target: /src/
 
 volumes:
   pgdata:

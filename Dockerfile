@@ -17,6 +17,7 @@ FROM python:3.12-slim AS runner
 RUN useradd -m backend_posts_api
 
 COPY --from=builder /app/.venv/ /app/.venv
+COPY --from=builder /app/README.md /app/README.md
 
 USER backend_posts_api
 EXPOSE 8000

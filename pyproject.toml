@@ -14,6 +14,8 @@ dependencies = [
     "asyncpg>=0.29.0",
     "loguru>=0.7.2",
     "faker>=26.0.0",
+    "uvicorn[standard]>=0.30.1",
+    "markdown>=3.6",
 ]
 requires-python = ">=3.12"
 readme = "README.md"
@@ -38,6 +40,9 @@ dev = [
 ]
 
 [tool.ruff]
+src = ["src"]
+
+[tool.ruff.lint]
 extend-select = [
     "F",
     "E",
@@ -51,3 +56,12 @@ extend-select = [
     "PERF",
     "FURB",
 ]
+
+[tool.pdm.scripts]
+ruff_format = "ruff format src/ tests/"
+ruff_check_fix = "ruff check --fix src/ tests/"
+format = { composite = ["ruff_format", "ruff_check_fix"] }
+ruff_format_lint = "ruff format --check src/ tests/"
+ruff_check = "ruff check src/ tests/"
+lint = { composite = ["ruff_format_lint", "ruff_check" ] }
+test = "pytest --cov=backend_posts_api tests/"

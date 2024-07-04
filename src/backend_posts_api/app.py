@@ -1,6 +1,9 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
+import markdown
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -23,7 +26,17 @@ async def _lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(lifespan=_lifespan)
+tags_metadata = [
+    {
+        "name": "User Operations",
+        "description": "Create, view, update, and delete users.",
+    },
+    {
+        "name": "Post Operations",
+        "description": "Create, view, update, and delete posts.",
+    },
+]
+app = FastAPI(lifespan=_lifespan, openapi_tags=tags_metadata)
 
 
 def _could_not_find_post_exception(id: int):
@@ -34,12 +47,15 @@ def _could_not_find_user_exception(id: int):
     return HTTPException(status_code=404, detail=f"Could not find user with id: '{id}'")
 
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 async def hello_world():
-    return {"HELLO": "WORLD"}
+    pth = Path("/app/README.md")
+    if not pth.exists():
+        return HTMLResponse("")
+    return markdown.markdown(pth.read_text())
 
 
-@app.get("/users/")
+@app.get("/users/", tags=["User Operations"])
 async def get_users(
     *, session: AsyncSession = Depends(get_session)
 ) -> list[UserPublic]:
@@ -47,7 +63,13 @@ async def get_users(
     return result.all()
 
 
-@app.get("/users/{id}")
+@app.get(
+    "/users/{id}",
+    tags=["User Operations"],
+    responses={
+        404: {"description": "The item was not found"},
+    },
+)
 async def get_user(
     id: int, *, session: AsyncSession = Depends(get_session)
 ) -> UserPublic:
@@ -57,7 +79,13 @@ async def get_user(
     return result
 
 
-@app.put("/users/{id}")
+@app.put(
+    "/users/{id}",
+    tags=["User Operations"],
+    responses={
+        404: {"description": "The item was not found"},
+    },
+)
 async def update_user(
     id: int, *, session: AsyncSession = Depends(get_session), user: UserUpdate
 ) -> UserPublic:
@@ -74,7 +102,14 @@ async def update_user(
     return user_result
 
 
-@app.delete("/users/{id}", status_code=204)
+@app.delete(
+    "/users/{id}",
+    tags=["User Operations"],
+    status_code=204,
+    responses={
+        404: {"description": "The item was not found"},
+    },
+)
 async def delete_user(id: int, *, session: AsyncSession = Depends(get_session)) -> None:
     user = await session.get(User, id)
     if user is None:
@@ -83,7 +118,7 @@ async def delete_user(id: int, *, session: AsyncSession = Depends(get_session)) 
     session.commit()
 
 
-@app.post("/users/")
+@app.post("/users/", tags=["User Operations"])
 async def create_user(
     *, session: AsyncSession = Depends(get_session), user: UserCreate
 ) -> UserPublic:
@@ -94,7 +129,7 @@ async def create_user(
     return db_user
 
 
-@app.get("/posts/")
+@app.get("/posts/", tags=["Post Operations"])
 async def get_posts(
     *, session: AsyncSession = Depends(get_session)
 ) -> list[PostPublic]:
@@ -102,7 +137,13 @@ async def get_posts(
     return result.all()
 
 
-@app.post("/posts/", response_model=PostPublic)
+@app.post(
+    "/posts/",
+    tags=["Post Operations"],
+    responses={
+        404: {"description": "The item was not found"},
+    },
+)
 async def create_post(
     *, session: AsyncSession = Depends(get_session), post: PostCreate
 ) -> PostPublic:
@@ -116,7 +157,13 @@ async def create_post(
     return db_post
 
 
-@app.get("/posts/{id}")
+@app.get(
+    "/posts/{id}",
+    tags=["Post Operations"],
+    responses={
+        404: {"description": "The item was not found"},
+    },
+)
 async def get_post(
     id: int, *, session: AsyncSession = Depends(get_session)
 ) -> PostPublic:
@@ -126,13 +173,19 @@ async def get_post(
     return result
 
 
-@app.put("/posts/{id}")
+@app.put(
+    "/posts/{id}",
+    tags=["Post Operations"],
+    responses={
+        404: {"description": "The item was not found"},
+    },
+)
 async def update_post(
     id: int, *, session: AsyncSession = Depends(get_session), post: PostUpdate
 ) -> PostPublic:
     post_result = await session.get(Post, id)
     if post_result is None:
-        raise _could_not_find_user_exception(id)
+        raise _could_not_find_post_exception(id)
     if post.title is not None:
         post_result.title = post.title
     if post.content is not None:
@@ -143,7 +196,14 @@ async def update_post(
     return post_result
 
 
-@app.delete("/posts/{id}", status_code=204)
+@app.delete(
+    "/posts/{id}",
+    tags=["Post Operations"],
+    status_code=204,
+    responses={
+        404: {"description": "The item was not found"},
+    },
+)
 async def delete_post(id: int, *, session: AsyncSession = Depends(get_session)) -> None:
     post = await session.get(Post, id)
     if post is None:
