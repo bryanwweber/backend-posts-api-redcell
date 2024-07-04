@@ -54,7 +54,7 @@ async def init_db(
     logger.info("Creating database connection with {}", DATABASE_URL)
     connect_args = {}
     if settings.deployed:
-        connect_args["sslmode"] = "require"
+        connect_args["ssl_mode"] = "require"
     engine = create_async_engine(
         DATABASE_URL, echo=True, future=True, connect_args=connect_args
     )
