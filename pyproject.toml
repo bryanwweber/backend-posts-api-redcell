@@ -50,7 +50,6 @@ extend-select = [
     "E",
     "W",
     "I",
-    "D103",
     "UP",
     "RUF",
     "ASYNC",
