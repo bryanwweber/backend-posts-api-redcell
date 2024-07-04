@@ -12,7 +12,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from .models import Post, User
 from .settings import settings
 
-DATABASE_URL = f"postgresql+asyncpg://{settings.postgres_user}:{settings.postgres_password}@{settings.postgres_host}:{settings.postgres_port}/{settings.posts_db_name}{settings.other_params}"
+DATABASE_URL = f"postgresql+asyncpg://{settings.postgres_user}:{settings.postgres_password}@{settings.postgres_host}:{settings.postgres_port}/{settings.posts_db_name}"
 engine = None
 
 
@@ -52,7 +52,12 @@ async def init_db(
     """
     global engine
     logger.info("Creating database connection with {}", DATABASE_URL)
-    engine = create_async_engine(DATABASE_URL, echo=True, future=True)
+    connect_args = {}
+    if settings.deployed:
+        connect_args["sslmode"] = "require"
+    engine = create_async_engine(
+        DATABASE_URL, echo=True, future=True, connect_args=connect_args
+    )
     async with engine.begin() as conn:
         try:
             await conn.run_sync(SQLModel.metadata.drop_all)

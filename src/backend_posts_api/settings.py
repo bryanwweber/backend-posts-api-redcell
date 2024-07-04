@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     posts_db_name: str = "posts"
     postgres_user: str = "postgres"
     postgres_password: str = "postgres"
-    other_params: str = ""
+    deployed: bool = False
 
 
 settings = Settings()
