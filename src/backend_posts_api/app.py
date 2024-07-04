@@ -269,8 +269,8 @@ async def create_user(
     The created `User` object.
     """
     db_user = User.model_validate(user)
+    session.add(db_user)
     try:
-        session.add(db_user)
         await session.commit()
     except IntegrityError:
         raise HTTPException(
@@ -324,7 +324,13 @@ async def create_post(
         raise _could_not_find_user_exception(post.user_id)
     db_post = Post.model_validate(post)
     session.add(db_post)
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError:
+        raise HTTPException(
+            status_code=500,
+            detail="Duplicate ID value, please choose another.",
+        )
     await session.refresh(db_post)
     return db_post
 
