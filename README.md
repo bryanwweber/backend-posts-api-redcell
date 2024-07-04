@@ -36,6 +36,10 @@ Once you have `pdm` and Python, running `pdm install` will create a virtual envi
 
 The test suite uses `pytest`. Run `pdm test` or `pdm run pytest --cov=backend_posts_api tests/` to run the entire suite.
 
+#### Note about the tests
+
+I wrote a very small test suite. Most of the testing I conducted was using the `/docs` HTML page to verify things worked and that some edge cases were caught. Given more time, I would create a much more extensive test suite that covered many of the edge cases that I caught with ad-hoc testing. In other words, the test suite doesn't represent my typical professional output; I decided to prioritize the functionality and deployment of the app rather than tests.
+
 ### Linting and Formatting
 
 Ruff is configured as the linter and formatter. Run `pdm lint` or `pdm format`.
