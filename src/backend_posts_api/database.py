@@ -12,7 +12,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from .models import Post, User
 from .settings import settings
 
-DATABASE_URL = f"postgresql+asyncpg://{settings.postgres_user}:{settings.postgres_password}@{settings.postgres_host}:{settings.postgres_port}/{settings.posts_db_name}"
+DATABASE_URL = f"postgresql+asyncpg://{settings.postgres_user}:{settings.postgres_password}@{settings.postgres_host}:{settings.postgres_port}/{settings.posts_db_name}{settings.other_params}"
 engine = None
 
 
