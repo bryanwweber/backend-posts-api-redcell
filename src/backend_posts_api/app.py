@@ -1,11 +1,20 @@
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Annotated
 
+import bcrypt
+import jwt
 import markdown
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.responses import HTMLResponse
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jwt.exceptions import InvalidTokenError
+from loguru import logger
+from pydantic import BaseModel
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.exc import IntegrityError
 
 from .database import get_session, init_db
 from .models import (
@@ -15,11 +24,29 @@ from .models import (
     UserUpdate,
 )
 
+SECRET_KEY = "46ca66a8beec13eb9a8b0e830e6bde0dabe1e351ab9cd716823827fdb3901ae8"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
 
 @asynccontextmanager
 async def _lifespan(_: FastAPI):
     await init_db(create_data=True)
     yield
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+def verify_password(plain_password, hashed_password):
+    return bcrypt.checkpw(
+        password=plain_password.encode("utf-8"), hashed_password=hashed_password
+    )
 
 
 tags_metadata = [
@@ -33,6 +60,24 @@ tags_metadata = [
     },
 ]
 
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    logger.info("Verifying user...")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            logger.error("Could not validate token")
+            raise credentials_exception
+    except InvalidTokenError:
+        raise credentials_exception
+
+
 app = FastAPI(
     lifespan=_lifespan,
     openapi_tags=tags_metadata,
@@ -41,12 +86,52 @@ app = FastAPI(
 )
 
 
+def _create_access_token(data: dict, expires_delta: timedelta | None = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(UTC) + expires_delta
+    else:
+        expire = datetime.now(UTC) + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
 def _could_not_find_post_exception(id: int):
     return HTTPException(status_code=404, detail=f"Could not find post with id: '{id}'")
 
 
 def _could_not_find_user_exception(id: int):
     return HTTPException(status_code=404, detail=f"Could not find user with id: '{id}'")
+
+
+def _authenticate_user(username, password) -> bool:
+    if username != "testuser":
+        return False
+    hashed_password = b"$2b$12$Kt9Ae4rT5vH2IZOmq8/K7urHZIkRQhSVs2zo5yXqkcBBhP24i2AO6"
+    if not verify_password(password, hashed_password):
+        return False
+    return True
+
+
+@app.post("/token")
+async def login_for_access_token(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+) -> Token:
+    user = _authenticate_user(form_data.username, form_data.password)
+    if not user:
+        logger.error("Could not validate user")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    logger.info("Validated user/pass")
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = _create_access_token(
+        data={"sub": "testuser"}, expires_delta=access_token_expires
+    )
+    return Token(access_token=access_token, token_type="bearer")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -103,6 +188,7 @@ async def get_user(id: int, *, session: AsyncSession = Depends(get_session)) -> 
     responses={
         404: {"description": "The item was not found"},
     },
+    dependencies=[Depends(get_current_user)],
 )
 async def update_user(
     id: int, *, session: AsyncSession = Depends(get_session), user: UserUpdate
@@ -144,6 +230,7 @@ async def update_user(
     responses={
         404: {"description": "The item was not found"},
     },
+    dependencies=[Depends(get_current_user)],
 )
 async def delete_user(id: int, *, session: AsyncSession = Depends(get_session)) -> None:
     """
@@ -164,7 +251,7 @@ async def delete_user(id: int, *, session: AsyncSession = Depends(get_session)) 
     session.commit()
 
 
-@app.post("/users/", tags=["User Operations"])
+@app.post("/users/", tags=["User Operations"], dependencies=[Depends(get_current_user)])
 async def create_user(
     *, session: AsyncSession = Depends(get_session), user: User
 ) -> User:
@@ -182,8 +269,14 @@ async def create_user(
     The created `User` object.
     """
     db_user = User.model_validate(user)
-    session.add(db_user)
-    await session.commit()
+    try:
+        session.add(db_user)
+        await session.commit()
+    except IntegrityError:
+        raise HTTPException(
+            status_code=500,
+            detail="Duplicate ID value, please choose another.",
+        )
     await session.refresh(db_user)
     return db_user
 
@@ -207,6 +300,7 @@ async def get_posts(*, session: AsyncSession = Depends(get_session)) -> list[Pos
     responses={
         404: {"description": "The item was not found"},
     },
+    dependencies=[Depends(get_current_user)],
 )
 async def create_post(
     *, session: AsyncSession = Depends(get_session), post: Post
@@ -267,6 +361,7 @@ async def get_post(id: int, *, session: AsyncSession = Depends(get_session)) -> 
     responses={
         404: {"description": "The item was not found"},
     },
+    dependencies=[Depends(get_current_user)],
 )
 async def update_post(
     id: int, *, session: AsyncSession = Depends(get_session), post: PostUpdate
@@ -309,6 +404,7 @@ async def update_post(
     responses={
         404: {"description": "The item was not found"},
     },
+    dependencies=[Depends(get_current_user)],
 )
 async def delete_post(id: int, *, session: AsyncSession = Depends(get_session)) -> None:
     """
