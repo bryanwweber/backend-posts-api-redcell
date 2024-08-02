@@ -1,3 +1,4 @@
 [tools]
 pdm = "latest"
 python = "3.12"
+helm = "latest"

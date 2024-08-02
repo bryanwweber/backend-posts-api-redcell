@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: {{ .Values.namespace }}
+  name: {{ .Release.Name }}
+  labels:
+    {{- include "backend-posts-api.labels" . | nindent 4 }}
+  annotations:
+    {{- include "backend-posts-api.annotations" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "backend-posts-api.selectorLabels" . | nindent 6 }}
+  replicas: 1
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "backend-posts-api.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ .Release.Name }}-sa
+      securityContext:
+        fsGroup: {{ .Values.deployment.securityContext.fsGroup }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            allowPrivilegeEscalation: {{ .Values.containers.securityContext.allowPrivilegeEscalation }}
+            privileged: {{ .Values.containers.securityContext.privileged }}
+            readOnlyRootFilesystem: {{ .Values.containers.securityContext.readOnlyRootFilesystem }}
+            runAsGroup: {{ .Values.containers.securityContext.runAsGroup }}
+            runAsNonRoot: {{ .Values.containers.securityContext.runAsNonRoot }}
+            runAsUser: {{ .Values.containers.securityContext.runAsUser }}
+          image: "backend-posts-api:latest"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: POSTGRES_HOST
+              value: "{{ .Release.Name }}-postgresql.{{ .Values.namespace }}.svc.cluster.local"
+            - name: POSTGRES_PORT
+              value: {{ .Values.postgresql.global.postgresql.service.port | quote }}
+            - name: POSTGRES_DB_NAME
+              value: {{ .Values.postgresql.global.postgresql.auth.database | quote }}
+            - name: POSTGRES_USER
+              value: {{ .Values.postgresql.global.postgresql.auth.username | quote }}
+            - name: POSTGRES_PASSWORD
+              value: {{ .Values.postgresql.global.postgresql.auth.password | quote }}
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
